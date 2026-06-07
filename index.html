@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>House Paint Color Explorer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #111827;
+      color: #e5e7eb;
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 310px;
+      background: #1f2937;
+      border-right: 1px solid #374151;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .sidebar-header {
+      padding: 16px 18px 14px;
+      border-bottom: 1px solid #374151;
+      background: #111827;
+    }
+
+    .sidebar-header h1 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #f9fafb;
+      letter-spacing: 0.03em;
+    }
+
+    .sidebar-header p {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 3px;
+    }
+
+    .sidebar-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+
+    .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+    .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+    .sidebar-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
+
+    .sidebar-footer {
+      padding: 10px;
+      border-top: 1px solid #374151;
+      display: flex;
+      gap: 8px;
+    }
+
+    /* ── Section card ── */
+    .section-card {
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      padding: 11px;
+      margin-bottom: 8px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 9px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #d1d5db;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .color-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid #4b5563;
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+
+    .toggle-btn {
+      background: none;
+      border: 1px solid #4b5563;
+      color: #6b7280;
+      border-radius: 4px;
+      padding: 2px 9px;
+      font-size: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .toggle-btn.on {
+      border-color: #4f46e5;
+      color: #818cf8;
+    }
+
+    /* ── Swatch grid ── */
+    .swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 3px;
+      margin-bottom: 9px;
+    }
+
+    .swatch {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 3px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.1s, border-color 0.1s;
+      outline: none;
+    }
+
+    .swatch:hover { transform: scale(1.2); z-index: 1; }
+    .swatch.selected { border-color: #fff; }
+
+    /* ── Custom color row ── */
+    .custom-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 7px;
+    }
+
+    .custom-row label {
+      font-size: 10px;
+      color: #6b7280;
+      white-space: nowrap;
+    }
+
+    .custom-row input[type="color"] {
+      width: 32px;
+      height: 26px;
+      border: 1px solid #4b5563;
+      border-radius: 4px;
+      cursor: pointer;
+      background: none;
+      padding: 1px;
+      flex-shrink: 0;
+    }
+
+    .hex-input {
+      flex: 1;
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 4px;
+      padding: 4px 7px;
+      font-size: 11px;
+      color: #e5e7eb;
+      font-family: 'SFMono-Regular', monospace;
+    }
+
+    .hex-input:focus { outline: none; border-color: #4f46e5; }
+
+    /* ── Intensity ── */
+    .intensity-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .intensity-row label {
+      font-size: 10px;
+      color: #6b7280;
+      white-space: nowrap;
+    }
+
+    .intensity-row input[type="range"] {
+      flex: 1;
+      accent-color: #4f46e5;
+      cursor: pointer;
+    }
+
+    .intensity-val {
+      font-size: 10px;
+      color: #6b7280;
+      width: 30px;
+      text-align: right;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      flex: 1;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .btn:hover { opacity: 0.85; }
+
+    .btn-primary { background: #4f46e5; color: #fff; }
+    .btn-secondary { background: #374151; color: #d1d5db; }
+
+    /* ── Main canvas area ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: #0f172a;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .image-container {
+      position: relative;
+      display: inline-block;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 25px 70px rgba(0,0,0,0.7);
+      max-width: 100%;
+      max-height: calc(100vh - 80px);
+    }
+
+    #houseImg {
+      display: block;
+      max-width: 100%;
+      max-height: calc(100vh - 80px);
+      image-rendering: auto;
+    }
+
+    #overlayCanvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      mix-blend-mode: color;
+      pointer-events: none;
+    }
+
+    /* ── Before/After bar ── */
+    .ba-bar {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 0;
+      border-radius: 7px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+    }
+
+    .ba-btn {
+      background: rgba(15,23,42,0.75);
+      color: #9ca3af;
+      border: none;
+      padding: 7px 18px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .ba-btn.active {
+      background: #4f46e5;
+      color: #fff;
+    }
+
+    /* ── Loading state ── */
+    #loadingMsg {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #6b7280;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════ SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <h1>🏠 Paint Color Explorer</h1>
+    <p>Pick colors for each part of your house</p>
+  </div>
+  <div class="sidebar-scroll" id="sidebarScroll"></div>
+  <div class="sidebar-footer">
+    <button class="btn btn-secondary" id="resetBtn">Reset All</button>
+    <button class="btn btn-primary" id="saveBtn">Save Image</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ MAIN -->
+<div class="main">
+  <div id="loadingMsg">Loading house image…</div>
+  <div class="image-container" id="imageContainer" style="display:none">
+    <img id="houseImg" src="house.png" alt="House exterior" crossorigin="anonymous">
+    <canvas id="overlayCanvas"></canvas>
+  </div>
+  <div class="ba-bar">
+    <button class="ba-btn active" id="afterBtn">After</button>
+    <button class="ba-btn" id="beforeBtn">Before</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// COLOR PALETTE  — curated exterior paint palette
+// ═══════════════════════════════════════════════════════
+const SWATCHES = [
+  // Whites / Creams
+  '#FFFFFF','#FAF7F0','#F0EBE0','#E4DBC6','#D6C9A8',
+  // Warm Grays / Taupes
+  '#C8C0B0','#B4A894','#A0907A','#8A7862','#6E5E4A',
+  // Cool Grays / Slates
+  '#D0D5DC','#B0B8C4','#8E9AAC','#6A7A90','#4A5C74',
+  // Blues — light to navy
+  '#C4D4E4','#8AB0CE','#5288B0','#2A6290','#0D3D6A',
+  // Blue-Greens / Teals
+  '#A4C4C0','#62A09A','#307C78','#165A54','#083830',
+  // Sages / Olive Greens
+  '#B8C8A0','#8AAA6C','#608A44','#3E6828','#224810',
+  // Warm Earth / Terracotta
+  '#D4B898','#B8946A','#9A7040','#784C20','#502E0A',
+  // Charcoals / Near-Black
+  '#747C80','#505860','#343C40','#1E2428','#080C10',
+  // Bold Door Accents
+  '#B83030','#7E2020','#2A5090','#18325A','#484E18',
+];
+
+// ═══════════════════════════════════════════════════════
+// SECTION DEFINITIONS
+// Paths are [x_fraction, y_fraction] arrays.
+// Tuned to the specific craftsman bungalow photo.
+// ═══════════════════════════════════════════════════════
+const SECTIONS = [
+  {
+    id: 'upper_siding',
+    label: 'Upper Siding',
+    emoji: '🔺',
+    defaultColor: '#8FA8AA',
+    opacity: 0.78,
+    paths: [
+      // Gable triangle (main upper siding area)
+      [[0.50,0.05],[0.75,0.41],[0.25,0.41]]
+    ]
+  },
+  {
+    id: 'lower_siding',
+    label: 'Lower Siding',
+    emoji: '🟦',
+    defaultColor: '#8FA8AA',
+    opacity: 0.78,
+    paths: [
+      // Left first-floor wall
+      [[0.04,0.41],[0.25,0.41],[0.25,0.88],[0.04,0.88]],
+      // Right first-floor wall
+      [[0.75,0.41],[0.96,0.41],[0.96,0.88],[0.75,0.88]],
+      // Porch back wall (visible behind columns)
+      [[0.28,0.44],[0.72,0.44],[0.72,0.65],[0.28,0.65]],
+    ]
+  },
+  {
+    id: 'trim',
+    label: 'Trim',
+    emoji: '⬜',
+    defaultColor: '#F0EDE4',
+    opacity: 0.72,
+    paths: [
+      // Left corner board
+      [[0.04,0.41],[0.065,0.41],[0.065,0.88],[0.04,0.88]],
+      // Right corner board
+      [[0.935,0.41],[0.96,0.41],[0.96,0.88],[0.935,0.88]],
+      // Left porch column
+      [[0.25,0.42],[0.29,0.42],[0.29,0.67],[0.25,0.67]],
+      // Right porch column
+      [[0.71,0.42],[0.75,0.42],[0.75,0.67],[0.71,0.67]],
+      // Porch railing (horizontal)
+      [[0.26,0.62],[0.74,0.62],[0.74,0.67],[0.26,0.67]],
+      // Gable horizontal fascia board
+      [[0.26,0.39],[0.74,0.39],[0.74,0.43],[0.26,0.43]],
+    ]
+  },
+  {
+    id: 'door',
+    label: 'Front Door',
+    emoji: '🚪',
+    defaultColor: '#2A3A4C',
+    opacity: 0.88,
+    paths: [
+      [[0.42,0.52],[0.58,0.52],[0.58,0.80],[0.42,0.80]]
+    ]
+  },
+  {
+    id: 'stairs',
+    label: 'Stairs',
+    emoji: '🪜',
+    defaultColor: '#C0B8A8',
+    opacity: 0.55,
+    paths: [
+      // Trapezoidal stair mass
+      [[0.31,0.80],[0.69,0.80],[0.73,0.96],[0.27,0.96]]
+    ]
+  },
+];
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+const state = {};
+SECTIONS.forEach(s => {
+  state[s.id] = { color: s.defaultColor, opacity: s.opacity, enabled: true };
+});
+
+// ═══════════════════════════════════════════════════════
+// CANVAS DRAWING
+// ═══════════════════════════════════════════════════════
+const img      = document.getElementById('houseImg');
+const canvas   = document.getElementById('overlayCanvas');
+const ctx      = canvas.getContext('2d');
+
+function syncCanvas() {
+  canvas.width  = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  canvas.style.width  = img.offsetWidth  + 'px';
+  canvas.style.height = img.offsetHeight + 'px';
+}
+
+function draw() {
+  const W = canvas.width;
+  const H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  SECTIONS.forEach(sec => {
+    const s = state[sec.id];
+    if (!s.enabled) return;
+
+    ctx.save();
+    ctx.globalAlpha = s.opacity;
+    ctx.fillStyle   = s.color;
+
+    sec.paths.forEach(path => {
+      ctx.beginPath();
+      ctx.moveTo(path[0][0] * W, path[0][1] * H);
+      for (let i = 1; i < path.length; i++) {
+        ctx.lineTo(path[i][0] * W, path[i][1] * H);
+      }
+      ctx.closePath();
+      ctx.fill();
+    });
+
+    ctx.restore();
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// UI BUILDER
+// ═══════════════════════════════════════════════════════
+function buildUI() {
+  const scroll = document.getElementById('sidebarScroll');
+
+  SECTIONS.forEach(sec => {
+    const s = state[sec.id];
+    const card = document.createElement('div');
+    card.className = 'section-card';
+    card.id = `card-${sec.id}`;
+
+    card.innerHTML = `
+      <div class="section-header">
+        <div class="section-title">
+          <div class="color-dot" id="dot-${sec.id}" style="background:${s.color}"></div>
+          ${sec.emoji} ${sec.label}
+        </div>
+        <button class="toggle-btn on" id="toggle-${sec.id}">on</button>
+      </div>
+      <div class="swatch-grid" id="swatches-${sec.id}"></div>
+      <div class="custom-row">
+        <label>Custom</label>
+        <input type="color" id="picker-${sec.id}" value="${s.color}">
+        <input type="text" class="hex-input" id="hex-${sec.id}" value="${s.color}" maxlength="7" placeholder="#000000">
+      </div>
+      <div class="intensity-row">
+        <label>Intensity</label>
+        <input type="range" id="int-${sec.id}" min="10" max="100" value="${Math.round(s.opacity*100)}">
+        <span class="intensity-val" id="intVal-${sec.id}">${Math.round(s.opacity*100)}%</span>
+      </div>
+    `;
+
+    scroll.appendChild(card);
+
+    // Build swatches
+    const grid = document.getElementById(`swatches-${sec.id}`);
+    SWATCHES.forEach(hex => {
+      const sw = document.createElement('div');
+      sw.className = 'swatch';
+      sw.style.background = hex;
+      sw.title = hex;
+      if (hex.toUpperCase() === s.color.toUpperCase()) sw.classList.add('selected');
+      sw.addEventListener('click', () => {
+        applyColor(sec.id, hex);
+        grid.querySelectorAll('.swatch').forEach(el => el.classList.remove('selected'));
+        sw.classList.add('selected');
+        document.getElementById(`picker-${sec.id}`).value = hex;
+        document.getElementById(`hex-${sec.id}`).value = hex;
+      });
+      grid.appendChild(sw);
+    });
+
+    // Color picker
+    document.getElementById(`picker-${sec.id}`).addEventListener('input', e => {
+      applyColor(sec.id, e.target.value);
+      document.getElementById(`hex-${sec.id}`).value = e.target.value;
+      clearSwatchSelection(sec.id);
+    });
+
+    // Hex input
+    document.getElementById(`hex-${sec.id}`).addEventListener('change', e => {
+      let v = e.target.value.trim();
+      if (!v.startsWith('#')) v = '#' + v;
+      if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+        applyColor(sec.id, v);
+        document.getElementById(`picker-${sec.id}`).value = v;
+        e.target.value = v;
+        clearSwatchSelection(sec.id);
+      }
+    });
+
+    // Intensity slider
+    document.getElementById(`int-${sec.id}`).addEventListener('input', e => {
+      state[sec.id].opacity = e.target.value / 100;
+      document.getElementById(`intVal-${sec.id}`).textContent = e.target.value + '%';
+      draw();
+    });
+
+    // Toggle on/off
+    document.getElementById(`toggle-${sec.id}`).addEventListener('click', e => {
+      const on = !state[sec.id].enabled;
+      state[sec.id].enabled = on;
+      e.target.textContent = on ? 'on' : 'off';
+      e.target.classList.toggle('on', on);
+      draw();
+    });
+  });
+}
+
+function applyColor(id, color) {
+  state[id].color = color;
+  document.getElementById(`dot-${id}`).style.background = color;
+  draw();
+}
+
+function clearSwatchSelection(id) {
+  document.querySelectorAll(`#swatches-${id} .swatch`).forEach(sw => sw.classList.remove('selected'));
+}
+
+// ═══════════════════════════════════════════════════════
+// BEFORE / AFTER
+// ═══════════════════════════════════════════════════════
+document.getElementById('afterBtn').addEventListener('click', () => {
+  canvas.style.display = '';
+  document.getElementById('afterBtn').classList.add('active');
+  document.getElementById('beforeBtn').classList.remove('active');
+});
+document.getElementById('beforeBtn').addEventListener('click', () => {
+  canvas.style.display = 'none';
+  document.getElementById('afterBtn').classList.remove('active');
+  document.getElementById('beforeBtn').classList.add('active');
+});
+
+// ═══════════════════════════════════════════════════════
+// RESET
+// ═══════════════════════════════════════════════════════
+document.getElementById('resetBtn').addEventListener('click', () => {
+  SECTIONS.forEach(sec => {
+    state[sec.id] = { color: sec.defaultColor, opacity: sec.opacity, enabled: true };
+
+    document.getElementById(`dot-${sec.id}`).style.background = sec.defaultColor;
+    document.getElementById(`picker-${sec.id}`).value = sec.defaultColor;
+    document.getElementById(`hex-${sec.id}`).value = sec.defaultColor;
+    document.getElementById(`int-${sec.id}`).value = Math.round(sec.opacity * 100);
+    document.getElementById(`intVal-${sec.id}`).textContent = Math.round(sec.opacity * 100) + '%';
+    document.getElementById(`toggle-${sec.id}`).textContent = 'on';
+    document.getElementById(`toggle-${sec.id}`).classList.add('on');
+
+    document.querySelectorAll(`#swatches-${sec.id} .swatch`).forEach(sw => {
+      sw.classList.toggle('selected', sw.title.toUpperCase() === sec.defaultColor.toUpperCase());
+    });
+  });
+  canvas.style.display = '';
+  document.getElementById('afterBtn').classList.add('active');
+  document.getElementById('beforeBtn').classList.remove('active');
+  draw();
+});
+
+// ═══════════════════════════════════════════════════════
+// SAVE  (composites to flat image)
+// ═══════════════════════════════════════════════════════
+document.getElementById('saveBtn').addEventListener('click', () => {
+  const W = img.naturalWidth;
+  const H = img.naturalHeight;
+  const save = document.createElement('canvas');
+  save.width = W; save.height = H;
+  const sc = save.getContext('2d');
+
+  sc.drawImage(img, 0, 0);
+  sc.globalCompositeOperation = 'color';
+  sc.drawImage(canvas, 0, 0);
+
+  const a = document.createElement('a');
+  a.download = 'house-color-concept.png';
+  a.href = save.toDataURL('image/png');
+  a.click();
+});
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+function init() {
+  document.getElementById('loadingMsg').style.display = 'none';
+  document.getElementById('imageContainer').style.display = 'inline-block';
+  syncCanvas();
+  draw();
+  buildUI();
+}
+
+img.addEventListener('load', init);
+if (img.complete && img.naturalWidth) init();
+
+window.addEventListener('resize', () => {
+  if (!img.naturalWidth) return;
+  canvas.style.width  = img.offsetWidth  + 'px';
+  canvas.style.height = img.offsetHeight + 'px';
+});
+</script>
+</body>
+</html>
